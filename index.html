@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lucky Tool v8</title>
+    <style>
+        :root {
+            --gold: #ffcc00;
+            --bg: #0d0d0d;
+            --panel: #1c1c1c;
+            --win: #00ff66;
+            --lose: #ff4444;
+            --near: #ffaa00;
+        }
+        
+        body { 
+            background: var(--bg); color: #eee; 
+            /* Установка Comic Sans с запасными вариантами */
+            font-family: "Comic Sans MS", "Comic Sans", "Chalkboard SE", "cursive";
+            display: flex; flex-direction: column; align-items: center; 
+            margin: 0; padding: 15px; box-sizing: border-box;
+            user-select: none;
+        }
+
+        .top-bar { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+
+        .balance-box {
+            background: linear-gradient(145deg, #222, #111);
+            padding: 15px; border-radius: 15px; border: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .balance-val { font-size: 26px; font-weight: 900; color: var(--gold); }
+
+        .bet-box {
+            display: flex; align-items: center; gap: 10px; background: #1a1a1a;
+            padding: 10px 15px; border-radius: 12px; border: 1px solid #333;
+        }
+
+        .bet-input {
+            flex: 1; background: transparent; border: none; color: white;
+            font-size: 20px; font-weight: bold; text-align: center; outline: none;
+            font-family: inherit;
+        }
+
+        .machine { 
+            background: #222; padding: 12px; border-radius: 25px; 
+            border: 4px solid #3a3a3a; width: 100%; max-width: 400px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.7); box-sizing: border-box;
+        }
+
+        .reels-container { 
+            display: flex; gap: 8px; justify-content: center;
+            background: #000; padding: 10px; border-radius: 15px; 
+            border: 2px inset #111; height: 100px; overflow: hidden;
+        }
+
+        .reel-box { 
+            flex: 1; height: 100px; position: relative;
+            background: linear-gradient(to bottom, #111 0%, #222 50%, #111 100%);
+            border-radius: 8px;
+        }
+
+        .symbol-strip { position: absolute; width: 100%; display: flex; flex-direction: column; align-items: center; }
+
+        .symbol { 
+            height: 100px; width: 100%; display: flex; 
+            justify-content: center; align-items: center; 
+            font-size: 50px; flex-shrink: 0;
+        }
+
+        #spin-btn { 
+            background: linear-gradient(180deg, var(--gold) 0%, #b8860b 100%);
+            color: #000; border: none; width: 100%; margin-top: 15px;
+            padding: 18px; font-size: 24px; font-weight: 900; 
+            border-radius: 15px; cursor: pointer; font-family: inherit;
+            box-shadow: 0 5px 0 #8b6508; transition: 0.1s;
+        }
+
+        #spin-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #8b6508; }
+        #spin-btn:disabled { background: #444; color: #777; box-shadow: none; transform: translateY(3px); }
+
+        .status { height: 35px; margin: 15px 0; font-weight: bold; font-size: 20px; text-align: center; }
+
+        details { width: 100%; max-width: 400px; margin-top: 10px; background: var(--panel); border-radius: 12px; border: 1px solid #333; }
+        summary { padding: 14px; cursor: pointer; color: var(--gold); font-weight: bold; font-size: 14px; outline: none; }
+        .list-content { max-height: 200px; overflow-y: auto; background: #111; border-top: 1px solid #333; }
+        .row { display: flex; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid #222; font-size: 14px; }
+        .history-item { padding: 10px 15px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; font-size: 13px; }
+
+        /* Футер с кнопками управления */
+        .admin-panel {
+            width: 100%; max-width: 400px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            margin-top: 20px; padding-bottom: 30px;
+        }
+
+        .danger-btn {
+            border: 2px solid #444; background: transparent; color: #888;
+            padding: 12px; border-radius: 10px; font-family: inherit;
+            font-size: 12px; font-weight: bold; cursor: pointer;
+        }
+        .danger-btn.reset { border-color: #ff4444; color: #ff4444; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="balance-box">
+            <div>
+                <div style="font-size: 10px; color: #888; text-transform: uppercase;">Твой Баланс</div>
+                <div class="balance-val" id="balance-display">0</div>
+            </div>
+            <button onclick="addCash()" style="background:#333; border:none; color:#aaa; border-radius:8px; padding:8px 12px; font-size:12px; font-family: inherit;">+ ДЕНЬГИ</button>
+        </div>
+
+        <div class="bet-box">
+            <span style="font-size: 14px; color: #888;">СТАВКА:</span>
+            <input type="number" id="bet-input" class="bet-input" value="10" inputmode="numeric">
+        </div>
+    </div>
+
+    <div class="machine">
+        <div class="reels-container">
+            <div class="reel-box"><div id="reel1" class="symbol-strip"></div></div>
+            <div class="reel-box"><div id="reel2" class="symbol-strip"></div></div>
+            <div class="reel-box"><div id="reel3" class="symbol-strip"></div></div>
+        </div>
+        <div class="status" id="msg">НУ, ПОГНАЛИ?</div>
+        <button id="spin-btn">КРУТИТЬ!</button>
+    </div>
+
+    <details>
+        <summary>ИНФО О ВЫПЛАТАХ</summary>
+        <div class="list-content">
+            <div class="row"><span>3 одинаковых</span><span style="color:var(--win)">от x3 до x80</span></div>
+            <div class="row"><span>Любые 2 совпадения</span><span style="color:var(--near)">x0.5 (кешбэк)</span></div>
+            <div class="row" style="font-size: 10px; color: #666;">* Шанс на джекпот минимален</div>
+        </div>
+    </details>
+
+    <details id="history-details">
+        <summary>ЖУРНАЛ СОБЫТИЙ</summary>
+        <div id="history-list" class="list-content"></div>
+    </details>
+
+    <!-- Кнопки управления внизу -->
+    <div class="admin-panel">
+        <button class="danger-btn" onclick="clearHistory()">ОЧИСТИТЬ ЖУРНАЛ</button>
+        <button class="danger-btn reset" onclick="fullReset()">СБРОСИТЬ ВСЁ</button>
+    </div>
+
+<script>
+    const reelsConfig = [
+        { 9:'🍒', 14:'🔔', 17:'💎', 19:'⭐', 20:'👑' },
+        { 10:'🍒', 15:'🔔', 18:'💎', 19:'⭐', 20:'👑' },
+        { 11:'🍒', 16:'🔔', 18:'💎', 19:'⭐', 20:'👑' }
+    ];
+
+    const pays = {'👑':80, '⭐':15, '💎':7, '🔔':3, '🍒':1};
+    const allSyms = ['🍒', '🔔', '💎', '⭐', '👑'];
+
+    let balance = parseInt(localStorage.getItem('slot_balance')) || 1000;
+    let history = JSON.parse(localStorage.getItem('slot_history') || '[]');
+
+    const balanceDisp = document.getElementById('balance-display');
+    const betInput = document.getElementById('bet-input');
+    const btn = document.getElementById('spin-btn');
+    const msg = document.getElementById('msg');
+    const strips = [document.getElementById('reel1'), document.getElementById('reel2'), document.getElementById('reel3')];
+
+    function updateUI() {
+        balanceDisp.textContent = balance.toLocaleString();
+        localStorage.setItem('slot_balance', balance);
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        history.slice(-15).reverse().forEach(h => {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            const color = h.win > 0 ? (h.win >= h.bet ? 'var(--win)' : 'var(--near)') : 'var(--lose)';
+            item.innerHTML = `<span>[${h.res}]</span> <span style="color:${color}">${h.win >= h.bet ? '+'+h.win : (h.win > 0 ? 'x0.5' : '-'+h.bet)}</span>`;
+            list.appendChild(item);
+        });
+        localStorage.setItem('slot_history', JSON.stringify(history));
+    }
+
+    function addCash() {
+        const val = prompt("Сколько насыпать?");
+        if(val && !isNaN(val)) { balance += parseInt(val); updateUI(); }
+    }
+
+    function clearHistory() {
+        history = [];
+        updateUI();
+    }
+
+    function fullReset() {
+        if(confirm('Ты точно хочешь удалить историю и обнулить баланс?')) {
+            balance = 1000;
+            history = [];
+            updateUI();
+            alert('Данные стерты!');
+        }
+    }
+
+    function getSym(reelIdx) {
+        const roll = Math.floor(Math.random() * 20) + 1;
+        const c = reelsConfig[reelIdx];
+        for (let key in c) { if (roll <= key) return c[key]; }
+        return '👑';
+    }
+
+    async function spin() {
+        const bet = parseInt(betInput.value);
+        if (isNaN(bet) || bet <= 0 || bet > balance) return alert("Мало денег или неверная ставка!");
+
+        btn.disabled = true;
+        balance -= bet;
+        updateUI();
+        msg.textContent = "КРУТИМ-ВЕРТИМ...";
+        msg.style.color = "var(--gold)";
+
+        let results = [getSym(0), getSym(1), getSym(2)];
+
+        // Хитрость Near Miss (80% шанс подставить соседний символ)
+        if (results[0] === results[1] && results[0] !== results[2]) {
+            if (Math.random() < 0.8) {
+                const targetIdx = allSyms.indexOf(results[0]);
+                results[2] = targetIdx === 0 ? allSyms[1] : allSyms[targetIdx - 1];
+            }
+        }
+
+        const boxHeight = 100;
+        for (let i = 0; i < 3; i++) {
+            const strip = strips[i];
+            const spins = 20 + (i * 12);
+            strip.style.transition = 'none';
+            strip.style.transform = 'translateY(0)';
+            strip.innerHTML = '';
+            
+            for (let j = 0; j < spins; j++) {
+                const d = document.createElement('div');
+                d.className = 'symbol';
+                d.textContent = allSyms[Math.floor(Math.random()*5)];
+                strip.appendChild(d);
+            }
+            const final = document.createElement('div');
+            final.className = 'symbol';
+            final.textContent = results[i];
+            strip.appendChild(final);
+
+            setTimeout(() => {
+                const duration = i === 2 ? 4.5 : 2 + i * 0.5;
+                strip.style.transition = `transform ${duration}s cubic-bezier(0.1, 0, 0.1, 1)`;
+                strip.style.transform = `translateY(-${spins * boxHeight}px)`;
+            }, 50);
+        }
+
+        setTimeout(() => {
+            let winAmount = 0;
+            let status = "ОЙ, МИМО...";
+            let color = "var(--lose)";
+
+            const isJackpot = (results[0] === results[1] && results[1] === results[2]);
+            // Проверка на любые 2 одинаковых
+            const isPair = (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]);
+
+            if (isJackpot) {
+                winAmount = bet * pays[results[0]];
+                status = `ОГО! x${pays[results[0]]}!`;
+                color = "var(--win)";
+            } else if (isPair) {
+                winAmount = Math.floor(bet * 0.5);
+                status = "ПОЧТИ! Лови x0.5";
+                color = "var(--near)";
+            }
+
+            balance += winAmount;
+            msg.textContent = status;
+            msg.style.color = color;
+            
+            history.push({
+                res: results.join(''),
+                bet: bet,
+                win: winAmount
+            });
+            updateUI();
+            btn.disabled = false;
+        }, 5300);
+    }
+
+    btn.addEventListener('click', spin);
+    strips.forEach(s => { s.innerHTML = '<div class="symbol">🎲</div>'; });
+    updateUI();
+</script>
+
+</body>
+</html>
